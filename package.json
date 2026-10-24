@@ -1,0 +1,21 @@
+{
+  "name": "job-hunt-autopilot",
+  "version": "1.0.0",
+  "description": "AI-powered Mailroom, Scam Shield & Interview Intelligence Tracker built for Students & Hackathons using Google Gemini API.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/test_suite.js"
+  },
+  "keywords": [
+    "hackathon",
+    "google-gemini",
+    "gemini-2.5-flash",
+    "automation",
+    "job-hunt-autopilot",
+    "scam-shield",
+    "kanban-tracker"
+  ],
+  "author": "Pratham Patel",
+  "license": "MIT"
+}

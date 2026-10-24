@@ -1,0 +1,2102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Hunt Autopilot — AI Mailroom & Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans:    ['"Plus Jakarta Sans"', 'sans-serif'],
+            display: ['"Space Grotesk"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* ── Core palette (CSS vars so Tailwind arbitrary values work) ── */
+    :root {
+      --brand-50:  #f5f3ff; --brand-100: #ede9fe; --brand-200: #ddd6fe;
+      --brand-300: #c4b5fd; --brand-400: #a78bfa; --brand-500: #8b5cf6;
+      --brand-600: #7c3aed; --brand-700: #6d28d9; --brand-800: #5b21b6;
+      --brand-900: #4c1d95; --brand-950: #2e1065;
+      --surface:   #0b0f19;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar        { width:6px; height:6px }
+    ::-webkit-scrollbar-track  { background:rgba(15,23,42,.6) }
+    ::-webkit-scrollbar-thumb  { background:rgba(148,163,184,.25); border-radius:9999px }
+    ::-webkit-scrollbar-thumb:hover { background:rgba(148,163,184,.45) }
+
+    body { background:var(--surface); font-family:"Plus Jakarta Sans",sans-serif; color:#f1f5f9 }
+
+    /* Glassmorphism */
+    .glass  { background:rgba(30,41,59,.65); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,.08) }
+    .glass-modal { background:rgba(15,23,42,.93); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); border:1px solid rgba(255,255,255,.12) }
+    .glass-heavy { background:rgba(10,16,35,.88); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px) }
+
+    /* Line-clamp polyfill */
+    .line-clamp-1,.line-clamp-2,.line-clamp-3 {
+      display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden
+    }
+    .line-clamp-1 { -webkit-line-clamp:1 }
+    .line-clamp-2 { -webkit-line-clamp:2 }
+    .line-clamp-3 { -webkit-line-clamp:3 }
+
+    /* Glow helpers */
+    .glow-brand  { box-shadow:0 0 28px -6px rgba(139,92,246,.4) }
+    .glow-emerald{ box-shadow:0 0 28px -6px rgba(16,185,129,.4) }
+    .glow-rose   { box-shadow:0 0 28px -6px rgba(244,63,94,.4)  }
+    .glow-amber  { box-shadow:0 0 28px -6px rgba(245,158,11,.4) }
+
+    /* Animated pulse dot */
+    .pulse-dot {
+      display:inline-block; width:8px; height:8px; border-radius:50%; position:relative
+    }
+    .pulse-dot::after {
+      content:''; position:absolute; inset:-3px; border-radius:50%;
+      background:inherit; opacity:.4;
+      animation:ping 2s cubic-bezier(0,0,.2,1) infinite
+    }
+    @keyframes ping { 75%,100%{ transform:scale(1.8); opacity:0 } }
+
+    /* Slide-in for cards */
+    @keyframes slideUp {
+      from { opacity:0; transform:translateY(12px) }
+      to   { opacity:1; transform:translateY(0) }
+    }
+    .slide-up { animation:slideUp .3s ease both }
+
+    /* Progress bar shimmer */
+    @keyframes shimmer {
+      0%   { background-position:-200% 0 }
+      100% { background-position:200% 0 }
+    }
+    .shimmer {
+      background:linear-gradient(90deg,#7c3aed 25%,#a78bfa 50%,#7c3aed 75%);
+      background-size:200% 100%;
+      animation:shimmer 1.5s infinite
+    }
+
+    /* Modal fade */
+    .modal-overlay { transition:opacity .2s }
+
+    /* Kanban column cap */
+    .kanban-col { max-height: calc(100vh - 300px); min-height:160px }
+
+    /* Countdown badge */
+    .countdown-green { background:rgba(16,185,129,.15); border:1px solid rgba(16,185,129,.35); color:#6ee7b7 }
+    .countdown-amber { background:rgba(245,158,11,.15); border:1px solid rgba(245,158,11,.35); color:#fcd34d }
+    .countdown-red   { background:rgba(244,63,94,.15);  border:1px solid rgba(244,63,94,.35);  color:#fca5a5 }
+
+    /* Tab indicator bar */
+    .tab-active { background:var(--brand-600); color:#fff }
+    .tab-inactive { background:rgba(30,41,59,.8); color:#94a3b8; border:1px solid rgba(255,255,255,.07) }
+    .tab-inactive:hover { color:#e2e8f0; border-color:rgba(255,255,255,.14) }
+
+    /* Floating badge on btn */
+    .btn-badge {
+      position:absolute; top:-5px; right:-5px;
+      width:16px; height:16px; border-radius:50%;
+      background:#ef4444; font-size:9px; font-weight:700;
+      display:flex; align-items:center; justify-content:center;
+      border:2px solid var(--surface);
+    }
+
+    /* Soft entry animation for modals */
+    @keyframes modalIn {
+      from { opacity:0; transform:scale(.96) translateY(12px) }
+      to   { opacity:1; transform:scale(1) translateY(0) }
+    }
+    .modal-box { animation:modalIn .22s ease both }
+
+    /* Chart bar */
+    .chart-bar { transition: height .5s ease }
+
+    /* ── Mobile bottom nav ── */
+    @media (max-width: 640px) {
+      .bottom-nav { display:flex }
+    }
+    .bottom-nav { display:none }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col overflow-x-hidden pb-16 sm:pb-0">
+
+  <!-- Ambient background glows -->
+  <div class="fixed top-0 left-0 w-[600px] h-[600px] rounded-full pointer-events-none"
+       style="background:radial-gradient(circle,rgba(124,58,237,.12) 0%,transparent 70%);top:-15%;left:-15%"></div>
+  <div class="fixed pointer-events-none"
+       style="background:radial-gradient(circle,rgba(6,182,212,.08) 0%,transparent 70%);width:500px;height:500px;bottom:-15%;right:-10%"></div>
+  <div class="fixed pointer-events-none"
+       style="background:radial-gradient(circle,rgba(239,68,68,.07) 0%,transparent 70%);width:400px;height:400px;top:40%;right:20%"></div>
+
+  <!-- ═══════════════════ HEADER ═══════════════════ -->
+  <header class="sticky top-0 z-40 glass-heavy border-b border-white/5 px-4 lg:px-8 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-3 flex-wrap">
+
+      <!-- Brand -->
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white"
+             style="background:linear-gradient(135deg,#7c3aed,#06b6d4)">
+          <i data-lucide="compass" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-base font-bold tracking-tight" style="font-family:'Space Grotesk',sans-serif">
+              Job Hunt Autopilot
+            </span>
+            <span class="hidden sm:inline text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                  style="background:rgba(139,92,246,.2);border:1px solid rgba(139,92,246,.35);color:#c4b5fd">
+              Gemini 2.5 Flash
+            </span>
+          </div>
+          <p class="text-[10px] text-slate-400 hidden sm:block">AI Mailroom · Scam Shield · Interview Intel</p>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-2 flex-wrap">
+
+        <!-- Run Autopilot -->
+        <button id="runBtn" onclick="runAutopilot()"
+          class="relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-xs font-bold shadow-lg transition active:scale-95 disabled:opacity-50"
+          style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-yellow-300" style="animation:spin 4s linear infinite"></i>
+          <span id="runBtnLabel">Run Autopilot</span>
+          <span class="hidden sm:inline text-[10px] bg-white/20 px-1.5 py-px rounded font-mono">20 emails</span>
+        </button>
+
+        <!-- Paste email -->
+        <button onclick="openModal('addEmailModal')"
+          class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-200 transition"
+          style="background:rgba(30,41,59,.9);border:1px solid rgba(255,255,255,.09)">
+          <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-emerald-400"></i>
+          <span class="hidden sm:inline">Paste Email</span>
+        </button>
+
+        <!-- Export CSV -->
+        <button onclick="exportCSV()" title="Export pipeline to CSV"
+          class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-200 transition"
+          style="background:rgba(30,41,59,.9);border:1px solid rgba(255,255,255,.09)">
+          <i data-lucide="download" class="w-3.5 h-3.5 text-cyan-400"></i>
+          <span class="hidden sm:inline">Export</span>
+        </button>
+
+        <!-- Reset demo -->
+        <button onclick="resetDemo()" title="Reset to 20 demo emails"
+          class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 transition"
+          style="background:rgba(30,41,59,.9);border:1px solid rgba(255,255,255,.09)">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Reset Demo</span>
+        </button>
+
+        <!-- API Settings -->
+        <button onclick="openApiModal()"
+          class="relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition"
+          style="background:rgba(124,58,237,.15);border:1px solid rgba(139,92,246,.35);color:#c4b5fd">
+          <i data-lucide="cpu" class="w-3.5 h-3.5"></i>
+          <span id="apiLabel" class="hidden sm:inline">API Settings</span>
+        </button>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════ ANALYSIS PROGRESS BAR ═══════════════════ -->
+  <div id="progressWrap" class="hidden sticky top-[57px] z-30 px-4 lg:px-8 py-2.5"
+       style="background:rgba(10,16,35,.95);border-bottom:1px solid rgba(255,255,255,.06)">
+    <div class="max-w-7xl mx-auto flex items-center gap-4">
+      <i data-lucide="loader" class="w-4 h-4 animate-spin" style="color:#a78bfa"></i>
+      <div class="flex-1">
+        <div class="flex items-center justify-between mb-1 text-xs">
+          <span id="progressLabel" class="text-slate-300 font-medium">Analyzing batch with Gemini…</span>
+          <span id="progressPct" class="text-slate-500 font-mono">0%</span>
+        </div>
+        <div class="w-full h-1.5 rounded-full overflow-hidden" style="background:rgba(255,255,255,.07)">
+          <div id="progressBar" class="h-full rounded-full shimmer transition-all duration-300" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ MAIN ═══════════════════ -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-5 space-y-5">
+
+    <!-- ── Stats Row ── -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
+
+      <!-- Applied -->
+      <div class="glass rounded-2xl p-4 space-y-2 hover:glow-brand transition-all cursor-default">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Applied</span>
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center"
+               style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.2)">
+            <i data-lucide="send" class="w-3.5 h-3.5 text-blue-400"></i>
+          </div>
+        </div>
+        <div class="flex items-baseline gap-1.5">
+          <span id="sTotalApplied" class="text-3xl font-bold" style="font-family:'Space Grotesk',sans-serif;color:#93c5fd">0</span>
+          <span class="text-[11px] text-slate-400">in pipeline</span>
+        </div>
+        <p class="text-[11px] flex items-center gap-1 text-slate-400">
+          <i data-lucide="clock" class="w-3 h-3 text-amber-400"></i>
+          <span id="sFollowUp" class="text-amber-300 font-semibold">0</span> need follow-up (&gt;7d)
+        </p>
+      </div>
+
+      <!-- Interviews -->
+      <div class="glass rounded-2xl p-4 space-y-2 hover:glow-emerald transition-all cursor-default">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Interviews</span>
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center"
+               style="background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.2)">
+            <i data-lucide="calendar-check" class="w-3.5 h-3.5 text-emerald-400"></i>
+          </div>
+        </div>
+        <div class="flex items-baseline gap-1.5">
+          <span id="sInterviews" class="text-3xl font-bold" style="font-family:'Space Grotesk',sans-serif;color:#6ee7b7">0</span>
+          <span class="pulse-dot bg-emerald-400 mx-1"></span>
+          <span class="text-[11px] text-slate-400">scheduled</span>
+        </div>
+        <p class="text-[11px] text-slate-400">⚡ Click card → AI Prep Kit</p>
+      </div>
+
+      <!-- Offers -->
+      <div class="glass rounded-2xl p-4 space-y-2 hover:glow-amber transition-all cursor-default">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Offers</span>
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center"
+               style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.2)">
+            <i data-lucide="trophy" class="w-3.5 h-3.5 text-amber-400"></i>
+          </div>
+        </div>
+        <div class="flex items-baseline gap-1.5">
+          <span id="sOffers" class="text-3xl font-bold" style="font-family:'Space Grotesk',sans-serif;color:#fcd34d">0</span>
+          <span class="text-[11px] text-slate-400">offers received</span>
+        </div>
+        <p class="text-[11px] text-slate-400">🏆 Best: <strong id="sBestPkg" class="text-amber-200">₹22 LPA</strong></p>
+      </div>
+
+      <!-- Scams -->
+      <div class="glass rounded-2xl p-4 space-y-2 hover:glow-rose transition-all cursor-default"
+           style="background:rgba(239,68,68,.04)">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-bold uppercase tracking-widest text-rose-400">🚨 Scams</span>
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center"
+               style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.25)">
+            <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-rose-400"></i>
+          </div>
+        </div>
+        <div class="flex items-baseline gap-1.5">
+          <span id="sScams" class="text-3xl font-bold" style="font-family:'Space Grotesk',sans-serif;color:#fca5a5">0</span>
+          <span class="text-[11px] text-rose-400/80">blocked</span>
+        </div>
+        <p class="text-[11px] text-rose-300 font-medium">🛡️ ~₹15,000+ saved</p>
+      </div>
+
+    </section>
+
+    <!-- ── Mini Activity Chart + Pipeline Breakdown ── -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+      <!-- Application Activity (last 30 days visual) -->
+      <div class="glass rounded-2xl p-4 col-span-2">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+            <i data-lucide="bar-chart-3" class="w-3.5 h-3.5" style="color:#a78bfa"></i>
+            Pipeline Activity — Last 12 Submissions
+          </h3>
+          <span class="text-[10px] text-slate-500 font-mono">Oct 2026</span>
+        </div>
+        <div id="activityChart" class="flex items-end gap-1.5 h-20">
+          <!-- JS rendered -->
+        </div>
+        <div class="flex items-center gap-4 mt-2 text-[10px] text-slate-400">
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-blue-400 inline-block"></span>Applied</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-emerald-400 inline-block"></span>Interview</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-amber-400 inline-block"></span>Offer</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-rose-400 inline-block"></span>Scam</span>
+        </div>
+      </div>
+
+      <!-- Funnel conversion donut (SVG) -->
+      <div class="glass rounded-2xl p-4 flex flex-col justify-between">
+        <h3 class="text-xs font-bold text-slate-300 flex items-center gap-1.5 mb-3">
+          <i data-lucide="filter" class="w-3.5 h-3.5" style="color:#a78bfa"></i>
+          Conversion Funnel
+        </h3>
+        <div id="funnelBars" class="space-y-2 text-xs">
+          <!-- JS rendered -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Toolbar: Search + Tabs ── -->
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+
+      <!-- Search -->
+      <div class="relative flex-1 max-w-md">
+        <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+        <input id="searchInput" oninput="renderAll()" placeholder="Search company, role, keywords…"
+          class="w-full rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition"
+          style="background:rgba(15,23,42,.9);border:1px solid rgba(255,255,255,.08)">
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex items-center gap-2">
+        <button id="tabBoard" onclick="switchTab('board')" class="tab-active flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
+          <i data-lucide="kanban" class="w-3.5 h-3.5"></i><span>Board</span>
+        </button>
+        <button id="tabScam" onclick="switchTab('scam')" class="tab-inactive relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
+          <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-rose-400"></i>
+          <span>Fraud Center</span>
+          <span id="scamBadge" class="btn-badge">0</span>
+        </button>
+        <button id="tabRaw" onclick="switchTab('raw')" class="tab-inactive flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
+          <i data-lucide="mail" class="w-3.5 h-3.5 text-cyan-400"></i>
+          <span>Mailbox (<span id="mailCount">20</span>)</span>
+        </button>
+        <button id="tabLog" onclick="switchTab('log')" class="tab-inactive flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition">
+          <i data-lucide="scroll-text" class="w-3.5 h-3.5 text-slate-400"></i>
+          <span class="hidden sm:inline">Activity</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ VIEW: KANBAN BOARD ═══ -->
+    <div id="viewBoard" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+
+      <!-- Applied -->
+      <div class="glass rounded-2xl overflow-hidden" style="border-top:3px solid #60a5fa">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-white/5">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+            <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-300">Applied</h3>
+          </div>
+          <span id="cntApplied" class="text-[11px] font-bold px-2 py-0.5 rounded-md text-blue-300"
+                style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.2)">0</span>
+        </div>
+        <div class="px-3 py-1 text-[10px] text-amber-400 border-b border-white/4 bg-amber-500/5">
+          ⏰ Yellow = no reply &gt;7 days
+        </div>
+        <div id="colApplied" class="p-3 space-y-3 kanban-col overflow-y-auto"></div>
+      </div>
+
+      <!-- Interview -->
+      <div class="glass rounded-2xl overflow-hidden" style="border-top:3px solid #34d399">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-white/5">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-300">Interviews</h3>
+          </div>
+          <span id="cntInterview" class="text-[11px] font-bold px-2 py-0.5 rounded-md text-emerald-300"
+                style="background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.2)">0</span>
+        </div>
+        <div class="px-3 py-1 text-[10px] text-emerald-400 border-b border-white/4 bg-emerald-500/5">
+          ⚡ Click AI Prep Kit before your round
+        </div>
+        <div id="colInterview" class="p-3 space-y-3 kanban-col overflow-y-auto"></div>
+      </div>
+
+      <!-- Offer -->
+      <div class="glass rounded-2xl overflow-hidden" style="border-top:3px solid #fbbf24">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-white/5">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-300">Offers</h3>
+          </div>
+          <span id="cntOffer" class="text-[11px] font-bold px-2 py-0.5 rounded-md text-amber-300"
+                style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.2)">0</span>
+        </div>
+        <div class="px-3 py-1 text-[10px] text-amber-400 border-b border-white/4 bg-amber-500/5">
+          🎉 Compensation packages & equity
+        </div>
+        <div id="colOffer" class="p-3 space-y-3 kanban-col overflow-y-auto"></div>
+      </div>
+
+      <!-- Rejected -->
+      <div class="glass rounded-2xl overflow-hidden" style="border-top:3px solid #64748b">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-white/5">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+            <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-300">Rejections</h3>
+          </div>
+          <span id="cntRejected" class="text-[11px] font-bold px-2 py-0.5 rounded-md text-slate-400"
+                style="background:rgba(100,116,139,.12);border:1px solid rgba(100,116,139,.2)">0</span>
+        </div>
+        <div class="px-3 py-1 text-[10px] text-slate-500 border-b border-white/4" style="background:rgba(100,116,139,.05)">
+          📂 Archived — learn & move forward
+        </div>
+        <div id="colRejected" class="p-3 space-y-3 kanban-col overflow-y-auto"></div>
+      </div>
+
+    </div>
+
+    <!-- ═══ VIEW: FRAUD CENTER ═══ -->
+    <div id="viewScam" class="hidden space-y-4">
+
+      <!-- Banner -->
+      <div class="p-5 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+           style="background:linear-gradient(135deg,rgba(239,68,68,.12),rgba(15,23,42,.9));border:1px solid rgba(239,68,68,.3)">
+        <div class="flex items-start gap-3">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+               style="background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.3)">
+            <i data-lucide="shield-x" class="w-6 h-6 text-rose-400"></i>
+          </div>
+          <div>
+            <h2 class="text-base font-bold flex items-center gap-2">
+              Student Safety Guard — Active Threat Intel
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                    style="background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.3);color:#fca5a5">
+                AI-Powered
+              </span>
+            </h2>
+            <p class="text-xs text-rose-200/70 mt-0.5">
+              Gemini detected: fee scams · WhatsApp interviews · ID harvest · task bots. Zero victims.
+            </p>
+          </div>
+        </div>
+        <button onclick="copyFresherRules()"
+          class="shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition"
+          style="background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.3);color:#fca5a5">
+          <i data-lucide="copy" class="w-3.5 h-3.5"></i>Share Safety Rules
+        </button>
+      </div>
+
+      <!-- Scam cards grid -->
+      <div id="scamGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+
+      <!-- Safety rules -->
+      <div class="glass rounded-2xl p-5">
+        <h3 class="text-sm font-bold mb-3 flex items-center gap-2">
+          <i data-lucide="info" class="w-4 h-4" style="color:#a78bfa"></i>
+          Campus Placement Golden Rules (Share with Your Batch!)
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-300">
+          <div class="p-3 rounded-xl" style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15)">
+            <span class="text-rose-400 font-bold block mb-1">❌ Never Pay Upfront</span>
+            Legit companies (Google, TCS, Infosys, startups) NEVER charge a "laptop courier fee", "gate pass fee", or "AI proctoring fee" to any candidate.
+          </div>
+          <div class="p-3 rounded-xl" style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15)">
+            <span class="text-rose-400 font-bold block mb-1">❌ Official Domain Only</span>
+            Real HRs always email from corporate domains (@google.com, @tcs.com). WhatsApp-only or @rediffmail / @gmail impersonators are instant red flags.
+          </div>
+          <div class="p-3 rounded-xl" style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15)">
+            <span class="text-rose-400 font-bold block mb-1">❌ Protect Government IDs</span>
+            Never upload Aadhaar / PAN / bank statements before receiving a verified offer letter. Identity theft targets freshers specifically.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══ VIEW: RAW MAILBOX ═══ -->
+    <div id="viewRaw" class="hidden space-y-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-bold">Incoming Email Stream</h2>
+          <p class="text-[11px] text-slate-400">All 20 realistic samples — click any row to inspect full email + AI analysis</p>
+        </div>
+        <select id="rawFilter" onchange="renderAll()"
+          class="text-xs rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none"
+          style="background:rgba(30,41,59,.9);border:1px solid rgba(255,255,255,.1)">
+          <option value="ALL">All Categories</option>
+          <option value="Applied">Applied</option>
+          <option value="Interview">Interview</option>
+          <option value="Offer">Offers</option>
+          <option value="Rejected">Rejected</option>
+          <option value="Scam">Scam</option>
+        </select>
+      </div>
+      <div id="rawList" class="space-y-2"></div>
+    </div>
+
+    <!-- ═══ VIEW: ACTIVITY LOG ═══ -->
+    <div id="viewLog" class="hidden space-y-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-bold">Activity Log</h2>
+          <p class="text-[11px] text-slate-400">Every status change, analysis run, and note — auto-timestamped</p>
+        </div>
+        <button onclick="clearLog()" class="text-[11px] text-slate-500 hover:text-rose-400 transition flex items-center gap-1">
+          <i data-lucide="trash-2" class="w-3 h-3"></i>Clear Log
+        </button>
+      </div>
+      <div id="logList" class="space-y-2"></div>
+    </div>
+
+  </main>
+
+  <!-- ═══════════════════ MOBILE BOTTOM NAV ═══════════════════ -->
+  <nav class="bottom-nav fixed bottom-0 left-0 right-0 z-40 items-center justify-around px-2 py-2"
+       style="background:rgba(10,16,35,.95);border-top:1px solid rgba(255,255,255,.07)">
+    <button onclick="switchTab('board')" class="flex flex-col items-center gap-0.5 text-[10px] text-slate-400 hover:text-white px-3 py-1">
+      <i data-lucide="kanban" class="w-4 h-4"></i><span>Board</span>
+    </button>
+    <button onclick="switchTab('scam')" class="relative flex flex-col items-center gap-0.5 text-[10px] text-slate-400 hover:text-rose-400 px-3 py-1">
+      <i data-lucide="shield-alert" class="w-4 h-4"></i><span>Fraud</span>
+      <span id="mobileScamBadge" class="absolute top-0 right-1 w-3.5 h-3.5 rounded-full bg-rose-500 text-[8px] font-bold flex items-center justify-center text-white">0</span>
+    </button>
+    <button onclick="runAutopilot()" class="flex flex-col items-center gap-0.5 text-[10px] text-slate-400 hover:text-purple-400 px-3 py-1">
+      <i data-lucide="sparkles" class="w-4 h-4"></i><span>AI Parse</span>
+    </button>
+    <button onclick="switchTab('raw')" class="flex flex-col items-center gap-0.5 text-[10px] text-slate-400 hover:text-cyan-400 px-3 py-1">
+      <i data-lucide="mail" class="w-4 h-4"></i><span>Mail</span>
+    </button>
+    <button onclick="switchTab('log')" class="flex flex-col items-center gap-0.5 text-[10px] text-slate-400 hover:text-white px-3 py-1">
+      <i data-lucide="scroll-text" class="w-4 h-4"></i><span>Log</span>
+    </button>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODALS
+  ══════════════════════════════════════════════════════════ -->
+
+  <!-- Interview Prep Modal -->
+  <div id="interviewModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4"
+       style="background:rgba(0,0,0,.75);backdrop-filter:blur(4px)">
+    <div class="glass-modal modal-box w-full max-w-2xl rounded-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+
+      <div class="flex items-start justify-between border-b border-white/8 pb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+               style="background:rgba(16,185,129,.18);border:1px solid rgba(16,185,129,.3)">
+            <i data-lucide="zap" class="w-5 h-5 text-emerald-400"></i>
+          </div>
+          <div>
+            <h3 id="prepTitle" class="text-base font-bold">Interview Intelligence Kit</h3>
+            <p id="prepSubtitle" class="text-xs text-slate-400">Company Briefing & High-Yield Questions</p>
+          </div>
+        </div>
+        <button onclick="closeModal('interviewModal')" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Schedule + Countdown -->
+      <div id="prepCountdownBadge" class="flex items-center justify-between p-3 rounded-xl text-xs"
+           style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25)">
+        <div class="flex items-center gap-2 text-emerald-300">
+          <i data-lucide="calendar-clock" class="w-4 h-4"></i>
+          <span id="prepSchedule" class="font-semibold">Upcoming Round</span>
+        </div>
+        <span id="prepCountdown" class="font-mono text-[11px] px-2 py-0.5 rounded countdown-green">Calculating…</span>
+      </div>
+
+      <!-- Company Radar -->
+      <div class="p-4 rounded-xl text-xs space-y-1.5" style="background:rgba(15,23,42,.8);border:1px solid rgba(255,255,255,.06)">
+        <h4 class="font-bold flex items-center gap-1.5" style="color:#c4b5fd">
+          <i data-lucide="building-2" class="w-3.5 h-3.5"></i>Company Radar & Architecture
+        </h4>
+        <p id="prepRadar" class="text-slate-300 leading-relaxed"></p>
+      </div>
+
+      <!-- Predicted Questions -->
+      <div class="p-4 rounded-xl text-xs space-y-2" style="background:rgba(15,23,42,.8);border:1px solid rgba(255,255,255,.06)">
+        <h4 class="font-bold flex items-center gap-1.5 text-amber-300">
+          <i data-lucide="target" class="w-3.5 h-3.5"></i>Top 3 Predicted Questions
+        </h4>
+        <ul id="prepQs" class="space-y-3"></ul>
+      </div>
+
+      <!-- Ask the interviewer -->
+      <div class="p-4 rounded-xl text-xs space-y-2" style="background:rgba(15,23,42,.8);border:1px solid rgba(255,255,255,.06)">
+        <h4 class="font-bold flex items-center gap-1.5 text-cyan-300">
+          <i data-lucide="message-circle-question" class="w-3.5 h-3.5"></i>Questions to Ask the Interviewer
+        </h4>
+        <ul id="prepAsk" class="space-y-1.5 text-slate-300"></ul>
+      </div>
+
+      <!-- Checklist strip -->
+      <div class="flex items-center justify-between p-3 rounded-xl text-xs"
+           style="background:rgba(124,58,237,.1);border:1px solid rgba(139,92,246,.2)">
+        <div class="flex items-center gap-2 text-slate-300">
+          <i data-lucide="check-circle-2" class="w-4 h-4" style="color:#a78bfa"></i>
+          <span>Camera ✓ · Quiet room ✓ · IDE ready ✓ · Resume open ✓</span>
+        </div>
+        <button onclick="copyPrepNotes()"
+          class="px-2.5 py-1 rounded-lg text-white font-semibold flex items-center gap-1 transition"
+          style="background:rgba(124,58,237,.6)">
+          <i data-lucide="clipboard" class="w-3 h-3"></i>Copy
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Follow-Up Modal -->
+  <div id="followUpModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4"
+       style="background:rgba(0,0,0,.75);backdrop-filter:blur(4px)">
+    <div class="glass-modal modal-box w-full max-w-xl rounded-2xl p-6 space-y-4">
+
+      <div class="flex items-start justify-between border-b border-white/8 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+               style="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.25)">
+            <i data-lucide="send" class="w-5 h-5 text-amber-400"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold">Smart Follow-Up Drafter</h3>
+            <p class="text-xs text-slate-400">AI-drafted, high-converting & polite</p>
+          </div>
+        </div>
+        <button onclick="closeModal('followUpModal')" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="flex items-center justify-between p-2.5 rounded-lg text-xs"
+           style="background:rgba(15,23,42,.9);border:1px solid rgba(255,255,255,.07)">
+        <span>
+          <span class="text-slate-400">Company:</span>
+          <strong id="fuCompany" class="text-white ml-1">Google</strong>
+          <span class="text-slate-400 ml-3">Role:</span>
+          <strong id="fuRole" class="ml-1" style="color:#c4b5fd">SWE</strong>
+        </span>
+        <span id="fuDays" class="font-mono text-[11px] px-2 py-0.5 rounded countdown-amber">8d ago</span>
+      </div>
+
+      <!-- Tone toggle -->
+      <div class="flex gap-2">
+        <button id="tonePolite" onclick="setTone('polite')"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+          style="background:rgba(245,158,11,.2);border:1px solid rgba(245,158,11,.3);color:#fcd34d">
+          Polite & Professional
+        </button>
+        <button id="toneCasual" onclick="setTone('casual')"
+          class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 transition"
+          style="background:rgba(30,41,59,.8);border:1px solid rgba(255,255,255,.07)">
+          Casual & Friendly
+        </button>
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">AI Draft — edit freely before sending:</label>
+        <textarea id="fuDraft" rows="8"
+          class="w-full rounded-xl p-3 text-xs text-slate-200 font-mono leading-relaxed focus:outline-none resize-none"
+          style="background:rgba(5,10,25,.9);border:1px solid rgba(255,255,255,.08)"></textarea>
+      </div>
+
+      <div class="flex items-center justify-between pt-1">
+        <button onclick="closeModal('followUpModal')" class="text-xs text-slate-500 hover:text-slate-300">Cancel</button>
+        <div class="flex gap-2">
+          <button onclick="markFollowedUp()"
+            class="px-3 py-2 rounded-xl text-xs font-medium text-slate-300 transition"
+            style="background:rgba(30,41,59,.9);border:1px solid rgba(255,255,255,.07)">
+            Mark Followed Up ✓
+          </button>
+          <button onclick="copyFollowUp()"
+            class="px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 transition"
+            style="background:linear-gradient(135deg,#d97706,#f59e0b)">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i>Copy Draft
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Email View Modal -->
+  <div id="emailModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4"
+       style="background:rgba(0,0,0,.75);backdrop-filter:blur(4px)">
+    <div class="glass-modal modal-box w-full max-w-2xl rounded-2xl p-6 space-y-4 max-h-[88vh] overflow-y-auto">
+
+      <div class="flex items-start justify-between border-b border-white/8 pb-3">
+        <div>
+          <span id="emailModalBadge" class="text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider"></span>
+          <h3 id="emailModalSubject" class="text-base font-bold mt-1"></h3>
+          <p id="emailModalMeta" class="text-[11px] text-slate-400 mt-0.5"></p>
+        </div>
+        <button onclick="closeModal('emailModal')" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- AI analysis -->
+      <div class="p-3.5 rounded-xl text-xs space-y-1.5"
+           style="background:rgba(124,58,237,.1);border:1px solid rgba(139,92,246,.25)">
+        <div class="flex items-center justify-between">
+          <span class="font-bold flex items-center gap-1.5" style="color:#c4b5fd">
+            <i data-lucide="bot" class="w-4 h-4"></i>Autopilot Intelligence
+          </span>
+          <span id="emailModalConf" class="font-mono text-[10px] px-2 py-0.5 rounded"
+                style="background:rgba(139,92,246,.2);color:#c4b5fd">98%</span>
+        </div>
+        <p id="emailModalReason" class="text-slate-300 leading-relaxed"></p>
+      </div>
+
+      <!-- Body -->
+      <div>
+        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Raw Message:</div>
+        <pre id="emailModalBody" class="p-4 rounded-xl text-xs text-slate-300 leading-relaxed whitespace-pre-wrap font-mono overflow-x-auto"
+             style="background:rgba(5,10,25,.9);border:1px solid rgba(255,255,255,.06)"></pre>
+      </div>
+
+      <div class="flex justify-end">
+        <button onclick="closeModal('emailModal')" class="px-3.5 py-1.5 rounded-xl text-xs text-slate-300 transition"
+                style="background:rgba(30,41,59,.9);border:1px solid rgba(255,255,255,.07)">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paste Email Modal -->
+  <div id="addEmailModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4"
+       style="background:rgba(0,0,0,.75);backdrop-filter:blur(4px)">
+    <div class="glass-modal modal-box w-full max-w-xl rounded-2xl p-6 space-y-4">
+
+      <div class="flex items-start justify-between border-b border-white/8 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+               style="background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.25)">
+            <i data-lucide="mail-plus" class="w-5 h-5 text-emerald-400"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold">Test Your Own Email</h3>
+            <p class="text-xs text-slate-400">Paste a real or suspicious job email to test AI parsing</p>
+          </div>
+        </div>
+        <button onclick="closeModal('addEmailModal')" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Subject Line</label>
+          <input id="newSubject" placeholder="e.g. Invitation for Technical Round at Stripe"
+            class="w-full rounded-xl px-3 py-2 text-slate-200 placeholder-slate-600 focus:outline-none"
+            style="background:rgba(5,10,25,.9);border:1px solid rgba(255,255,255,.08)">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Sender</label>
+          <input id="newSender" placeholder="Stripe Recruiting <careers@stripe.com>"
+            class="w-full rounded-xl px-3 py-2 text-slate-200 placeholder-slate-600 focus:outline-none"
+            style="background:rgba(5,10,25,.9);border:1px solid rgba(255,255,255,.08)">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Email Body</label>
+          <textarea id="newBody" rows="7" placeholder="Paste the full email text here…"
+            class="w-full rounded-xl p-3 text-slate-200 placeholder-slate-600 font-mono leading-relaxed focus:outline-none resize-none"
+            style="background:rgba(5,10,25,.9);border:1px solid rgba(255,255,255,.08)"></textarea>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-1">
+        <button onclick="closeModal('addEmailModal')" class="px-3.5 py-2 rounded-xl text-xs text-slate-400">Cancel</button>
+        <button onclick="submitNewEmail()"
+          class="px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 transition"
+          style="background:linear-gradient(135deg,#059669,#0d9488)">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-yellow-300"></i>Parse & Add to Board
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- API Key Modal -->
+  <div id="apiModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4"
+       style="background:rgba(0,0,0,.75);backdrop-filter:blur(4px)">
+    <div class="glass-modal modal-box w-full max-w-lg rounded-2xl p-6 space-y-4">
+
+      <div class="flex items-start justify-between border-b border-white/8 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+               style="background:rgba(139,92,246,.18);border:1px solid rgba(139,92,246,.3)">
+            <i data-lucide="key" class="w-5 h-5" style="color:#a78bfa"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold">Gemini API Configuration</h3>
+            <p class="text-xs text-slate-400">Google AI Studio · Secure browser-side storage</p>
+          </div>
+        </div>
+        <button onclick="closeModal('apiModal')" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-3 rounded-xl text-[11px] text-slate-300 leading-relaxed"
+           style="background:rgba(124,58,237,.08);border:1px solid rgba(139,92,246,.18)">
+        💡 <strong>Hackathon-proof dual mode:</strong> Without a key the app uses the built-in <em>Intelligent Heuristic NLP Engine</em> — all features work offline!
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Google AI Studio API Key</label>
+          <div class="relative">
+            <input id="apiKeyInput" type="password" placeholder="AIzaSy…"
+              class="w-full rounded-xl pl-3 pr-10 py-2.5 font-mono text-slate-200 placeholder-slate-600 focus:outline-none"
+              style="background:rgba(5,10,25,.9);border:1px solid rgba(255,255,255,.08)">
+            <button onclick="toggleKeyVis()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200">
+              <i id="keyEye" data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">Stored only in your browser's <code class="text-slate-400">localStorage</code> — never sent to any server.</p>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Model</label>
+          <select id="modelSelect"
+            class="w-full rounded-xl px-3 py-2.5 text-slate-200 focus:outline-none"
+            style="background:rgba(5,10,25,.9);border:1px solid rgba(255,255,255,.08)">
+            <option value="gemini-2.5-flash">gemini-2.5-flash — Recommended (fast + structured)</option>
+            <option value="gemini-1.5-flash">gemini-1.5-flash — Reliable default</option>
+            <option value="gemini-1.5-pro">gemini-1.5-pro — Deep reasoning</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-1">
+        <button onclick="clearKey()" class="text-xs text-rose-400 hover:text-rose-300 transition">Remove Key</button>
+        <div class="flex gap-2">
+          <button onclick="testKey()" class="px-3 py-2 rounded-xl text-xs font-medium text-slate-300 transition"
+                  style="background:rgba(30,41,59,.9);border:1px solid rgba(255,255,255,.07)">
+            Test Connection
+          </button>
+          <button onclick="saveKey()" class="px-4 py-2 rounded-xl text-xs font-bold text-white transition"
+                  style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">
+            Save Settings
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toasts" class="fixed bottom-20 sm:bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       JAVASCRIPT
+  ══════════════════════════════════════════════════════════ -->
+  <script>
+  /* ─────────────────────────────────────────────────────
+     MOCK DATASET — 20 Realistic Diverse Job Emails
+  ───────────────────────────────────────────────────── */
+  const DEMO_EMAILS = [
+    // ── APPLIED (5) ──────────────────────────────────────────
+    { id:'E001', company:'Google', role:'Software Engineering Intern – Summer 2027',
+      sender:'Google Careers <careers-noreply@google.com>',
+      subject:'Thank you for applying to Google: SWE Intern (Req #99281)',
+      date:'2026-10-14', status:'Applied', confidence:98,
+      aiReason:'ATS application receipt with requisition ID. Awaiting recruiter review.',
+      body:`Hi Pratham,\n\nThank you for your interest in the Software Engineering Intern position (Req #99281) at Google Bangalore.\n\nOur university team will review your qualifications. Given high application volume, this takes 1–2 weeks.\n\nBest,\nGoogle University Programs Team` },
+
+    { id:'E002', company:'Microsoft', role:'SDE-1 (India Development Center)',
+      sender:'Microsoft Talent <talent@microsoft.com>',
+      subject:'Application Received — Software Engineer #781920',
+      date:'2026-10-21', status:'Applied', confidence:96,
+      aiReason:'Official ATS confirmation for SDE-1 role at MSFT IDC Noida.',
+      body:`Dear Candidate,\n\nWe appreciate you applying for Software Engineer at Microsoft IDC Noida. Your application has been logged. If your background matches, a recruiter will send a Codility assessment link.\n\nWarm regards,\nMicrosoft Talent Acquisition` },
+
+    { id:'E003', company:'Razorpay', role:'Frontend Engineer – Growth & Checkout',
+      sender:'Razorpay Hiring <careers@razorpay.com>',
+      subject:"We got your application for Frontend Engineer!",
+      date:'2026-10-12', status:'Applied', confidence:95,
+      aiReason:'Lever ATS confirmation; HR managers review every profile manually.',
+      body:`Hey Pratham!\n\nThanks for applying to Razorpay! We've received your portfolio and GitHub links for the Frontend Engineer (Growth & Checkout) role.\n\nOur engineers review every profile. We'll update you shortly!\n\nCheers,\nRazorpay Hiring Team` },
+
+    { id:'E004', company:'Stripe', role:'Backend Infrastructure Engineer',
+      sender:'Stripe Recruiting <apply-ack@stripe.com>',
+      subject:'Stripe: Application Confirmation',
+      date:'2026-10-15', status:'Applied', confidence:97,
+      aiReason:'Greenhouse ATS receipt. Stripe reviews each application for signal quality.',
+      body:`Hi Pratham,\n\nThanks for applying to Stripe! We received your application for Backend Infrastructure Engineer.\n\nWe care deeply about creating a high-signal interview experience. Someone on our engineering team will review your application soon.\n\nSincerely,\nStripe Recruiting` },
+
+    { id:'E005', company:'Zomato', role:'Associate Product Engineer',
+      sender:'Zomato People <careers@zomato.com>',
+      subject:'Your application at Zomato is in!',
+      date:'2026-10-22', status:'Applied', confidence:94,
+      aiReason:'Application received; take-home challenge expected within 5 business days.',
+      body:`Hello,\n\nYour application for Associate Product Engineer at Zomato Gurgaon HQ has been received.\n\nWe move fast! If shortlisted, you will receive a take-home code challenge within 5 business days.\n\nKeep building,\nZomato Engineering Recruiting` },
+
+    // ── INTERVIEW (4) ──────────────────────────────────────────
+    { id:'E006', company:'Uber', role:'SDE II – Backend Systems',
+      sender:'Uber Technical Recruiting <t-recruiting@uber.com>',
+      subject:'Invitation: Uber Technical Interview Round 1 (DSA & Architecture)',
+      date:'2026-10-23', status:'Interview', confidence:99,
+      interviewDate:'2026-10-26 15:30 IST', interviewType:'DSA + Distributed Caching Design (60 min)',
+      meetLink:'https://meet.google.com/ubr-eng-774',
+      aiReason:'Explicit Google Meet link, date/time, and round format confirmed.',
+      body:`Hi Pratham,\n\nGreat news! The team was impressed by your background and invites you for Round 1 Technical Interview.\n\n📅 Monday, October 26, 2026 at 3:30 PM IST (60 mins)\n📍 https://meet.google.com/ubr-eng-774\nFormat: 45 min DSA + Distributed Caching design, 15 min Q&A.\n\nPlease confirm if this works.\n\nBest,\nSiddharth Rao, Senior Technical Recruiter | Uber` },
+
+    { id:'E007', company:'Atlassian', role:'Graduate SWE (Remote)',
+      sender:'Atlassian APAC Campus <university-apac@atlassian.com>',
+      subject:'Atlassian Interview Invite: Values & Technical Problem Solving',
+      date:'2026-10-22', status:'Interview', confidence:99,
+      interviewDate:'2026-10-28 11:00 AM IST', interviewType:'Atlassian Craft & Values Round (90 min)',
+      meetLink:'https://zoom.us/j/9912038174',
+      aiReason:'University grad invite with Zoom link, SOLID OOP focus, and Atlassian values round.',
+      body:`Hi Pratham,\n\nCongratulations on clearing our OA! We invite you to the Graduate SWE hiring process.\n\nDate: Wednesday, October 28, 2026\nTime: 11:00 AM – 12:30 PM IST | Zoom\nFocus: Data structures, practical coding + Atlassian Core Values.\n\nBest,\nAtlassian APAC Campus Team` },
+
+    { id:'E008', company:'Swiggy', role:'SDE-1 (Instamart Fleet)',
+      sender:'Swiggy Tech <swiggy-hiring@swiggy.in>',
+      subject:'Swiggy: Round 2 – Pair Programming & Event-Driven Systems',
+      date:'2026-10-24', status:'Interview', confidence:98,
+      interviewDate:'2026-10-27 14:00 IST', interviewType:'Pair Programming + Kafka/Redis design',
+      meetLink:'https://meet.google.com/swg-pair-902',
+      aiReason:'Round 2 live pair-programming with a principal engineer; real-time order queue simulation.',
+      body:`Dear Pratham,\n\nFollowing your strong Round 1, we invite you to Round 2: Live Pair Programming on Tuesday, Oct 27 at 2:00 PM IST.\n\nWe'll simulate a real-time order dispatch queue using Redis & Kafka. Bring your favorite IDE!\n\nWarmly,\nDeepika Sen, Tech Talent Partner, Swiggy Instamart` },
+
+    { id:'E009', company:'Adobe', role:'Member of Technical Staff 1',
+      sender:'Adobe Talent <adobe-jobs@adobe.com>',
+      subject:'Confirmation: Adobe Technical Video Screen',
+      date:'2026-10-23', status:'Interview', confidence:97,
+      interviewDate:'2026-10-29 16:00 IST', interviewType:'Core CS + WebGL/Canvas (60 min)',
+      meetLink:'https://adobe.webex.com/meet/recruiter29',
+      aiReason:'WebEx interview screen with Senior MTS on Creative Cloud Web team.',
+      body:`Hello Pratham,\n\nYour technical screening with Adobe Creative Cloud Web team is scheduled for Thursday, Oct 29, 2026 at 4:00 PM IST via WebEx.\n\nPlease test your audio/camera beforehand.\n\nBest,\nAdobe India Talent Team` },
+
+    // ── OFFERS (2) ──────────────────────────────────────────
+    { id:'E010', company:'CRED', role:'SDE Backend',
+      sender:"CRED Founders Office <offers@cred.club>",
+      subject:"Offer Letter from CRED: Welcome to the Syndicate! 🎉",
+      date:'2026-10-23', status:'Offer', confidence:100,
+      salary:'₹22 LPA + ₹8L ESOPs', location:'Bangalore (Indiranagar)',
+      aiReason:'Formal offer letter with compensation breakdown; signing deadline 7 days.',
+      body:`Hey Pratham,\n\nKunal and the entire engineering leadership loved your performance! We're thrilled to extend an offer for SDE-1 at CRED Bangalore.\n\n• Fixed Base: ₹18,00,000\n• Joining Bonus: ₹4,00,000\n• ESOPs: ₹8,00,000 (4yr vest)\n• Total Year 1: ₹22 LPA + Apple Hardware\n\nPlease sign and return within 7 business days.\n\nWelcome to the syndicate!\nPeople Experience | CRED` },
+
+    { id:'E011', company:'Linear', role:'Frontend Systems Engineer',
+      sender:'Karri Saarinen <karri@linear.app>',
+      subject:'Offer to join Linear as Frontend Systems Engineer',
+      date:'2026-10-21', status:'Offer', confidence:99,
+      salary:'$95,000 USD + 0.15% Equity', location:'Remote (Global)',
+      aiReason:'Founder email with compensation, equity terms, and international hiring via Deel.',
+      body:`Hi Pratham,\n\nWe really enjoyed your trial project. Your attention to micro-interactions, keyboard nav, and optimistic UI is world-class.\n\n• Base: $95,000 USD / yr (via Deel)\n• Equity: 0.15% options\n• Setup budget: $4,000\n• Annual offsites: Europe & Japan\n\nLet us know when you'd like to chat!\n\nKarri & the Linear Team` },
+
+    // ── REJECTIONS (4) ──────────────────────────────────────
+    { id:'E012', company:'Spotify', role:'Web Player Engineer',
+      sender:'Spotify Student Recruitment <no-reply@spotify.com>',
+      subject:'Update on your application for Web Player Engineer',
+      date:'2026-10-18', status:'Rejected', confidence:99,
+      aiReason:'Polite rejection after portfolio screen; cited roadmap alignment mismatch.',
+      body:`Hi Pratham,\n\nThank you for applying for Web Player Engineer at Spotify. While our engineers were genuinely impressed by your personal projects, we decided to advance candidates whose experience aligns more with our current roadmap.\n\nWe'll keep you in our talent community for future openings.\n\nBest of luck,\nThe Band at Spotify` },
+
+    { id:'E013', company:'Netflix', role:'Full Stack Engineer (Growth UI)',
+      sender:'Netflix Jobs <talent@netflix.com>',
+      subject:'Your candidacy for Full Stack Engineer at Netflix',
+      date:'2026-10-17', status:'Rejected', confidence:98,
+      aiReason:'Standard rejection citing senior-level requirement for production streaming infra.',
+      body:`Dear Pratham,\n\nThank you for interviewing with Netflix. At this time, we are prioritizing senior candidates with 3+ years of production experience in high-concurrency streaming infrastructure.\n\nWe wish you the very best in your search!\n\nSincerely,\nNetflix Talent Operations` },
+
+    { id:'E014', company:'Notion', role:'Product Engineering Intern',
+      sender:'Notion Recruiting <jobs@m.notion.so>',
+      subject:'Notion Application Status: Product Engineering Intern',
+      date:'2026-10-19', status:'Rejected', confidence:97,
+      aiReason:'High-volume intern pool; 8,000+ applicants for very few positions.',
+      body:`Hi Pratham,\n\nThank you for your enthusiasm for Notion and for applying for our 2027 Summer Intern program.\n\nWe received 8,000+ applications for a small number of positions. Unfortunately, we cannot offer an interview slot this cohort.\n\nWarmly,\nNotion University Team` },
+
+    { id:'E015', company:'Swiggy', role:'Data Platform Intern (Archived)',
+      sender:'Swiggy Careers <no-reply@swiggy.in>',
+      subject:'Application Status — Data Platform Intern',
+      date:'2026-10-08', status:'Rejected', confidence:96,
+      aiReason:'Position closed internally; candidate archive notice.',
+      body:`Dear Candidate,\n\nThank you for your interest in the Data Platform Intern position. This position has been closed internally.\n\nThank you for your time and effort.\n\nRegards,\nSwiggy HR` },
+
+    // ── SCAMS (5) ──────────────────────────────────────────
+    { id:'E016', company:'Apex Global InfoTech (Fake HR)', role:'Remote Software Developer',
+      sender:'HR Pooja Sharma <apexinfotech-hr992@rediffmail.com>',
+      subject:'URGENT: Selection Letter for WFH Developer — ₹55,000/month',
+      date:'2026-10-23', status:'Scam', confidence:99,
+      scamReason:'🚩 Demands ₹4,500 "Laptop Courier & Security Insurance" upfront via UPI. Unofficial Rediffmail sender; zero corporate verification.',
+      aiReason:'🚩 Demands ₹4,500 "Laptop Courier & Security Insurance" upfront via UPI. Unofficial Rediffmail sender.',
+      body:`DEAR CANDIDATE,\n\nCONGRATULATIONS!! You are shortlisted for Work From Home Software Associate at Apex Global InfoTech with monthly salary ₹55,000/-.\n\nCompany will provide brand new Dell Alienware Laptop. To dispatch it, you MUST pay refundable security deposit of ₹4,500/- immediately to HR UPI: apexcorp.hr@oksbi.\n\nFailure to pay within 24 hours = seat forfeited.\n\nPooja Sharma, Senior HR | WhatsApp Only: 98112-XXXXX` },
+
+    { id:'E017', company:'Amazon Online Services (Impersonator)', role:'Part-Time Product Reviewer',
+      sender:'Amazon HR <recruiter-amazon-work@gmail.com>',
+      subject:'Immediate Offer: Amazon Part Time Associate — Earn ₹3,000–₹8,000 Daily',
+      date:'2026-10-24', status:'Scam', confidence:98,
+      scamReason:'🚩 Unrealistic ₹8,000/day claim, free Gmail sender, WhatsApp-only funnel. Amazon official comms never come from @gmail.com.',
+      aiReason:'🚩 Unrealistic daily earnings + free Gmail sender + WhatsApp-only contact.',
+      body:`Hello Friend,\n\nAmazon India is hiring 50 students for daily order rating operations. No tech experience required!\n\nDaily Payout: ₹3,500–₹9,000 credited every evening.\n\nMessage our manager on WhatsApp NOW: https://wa.me/919988776655?text=StartAmazonJob\n\nDo not reply to this email — only WhatsApp accepted!` },
+
+    { id:'E018', company:'TCS NextStep Drive (Fraudulent)', role:'Assistant System Engineer',
+      sender:'TCS Portal <tcs-assessment-desk@consultant.com>',
+      subject:'Mandatory Registration Fee: TCS Digital Off-Campus CodeVita Gate Pass',
+      date:'2026-10-22', status:'Scam', confidence:99,
+      scamReason:'🚩 Demands ₹2,999 "AI Proctoring Exam Gate Fee". TCS NEVER charges any registration fee. Fake domain @consultant.com.',
+      aiReason:'🚩 Fake exam gate fee of ₹2,999. Verified TCS drives are always free.',
+      body:`Dear Engineering Graduate,\n\nYour roll number has been nominated for TCS Digital Off-Campus Drive 2026 (7.5 LPA package).\n\nAll test takers must pay a non-refundable AI Proctoring & Hall Ticket Fee of ₹2,999/- to reserve their test slot.\n\nPay at: http://tcs-hallticket-payment-portal.in/pay\n\nTCS Recruitment Cell` },
+
+    { id:'E019', company:'FinTech Prime Careers', role:'Junior React Developer',
+      sender:'FinTech Prime HR <verifications@fintechprime-careers.xyz>',
+      subject:'Action Required: Bank KYC & Aadhaar Verification before Interview Schedule',
+      date:'2026-10-20', status:'Scam', confidence:97,
+      scamReason:'🚩 Identity theft attempt. Demands colored scans of Aadhaar, PAN Card, and bank statements BEFORE any interview is even scheduled.',
+      aiReason:'🚩 Phishing / identity harvesting — no legit company asks for Aadhaar before interview.',
+      body:`Dear Applicant,\n\nWe reviewed your GitHub and wish to proceed with an interview for Junior React Developer.\n\nBefore scheduling, our compliance team requires: both sides of Aadhaar Card, PAN Card, and parents' bank statement to verify employment eligibility.\n\nPlease email high-resolution scans immediately.\n\nHR Department\nFinTech Prime Technologies` },
+
+    { id:'E020', company:'Global Social Media Marketing', role:'Telegram Content Assistant',
+      sender:'Elena Media Agent <marketing-assistant99@outlook.com>',
+      subject:'Work 20 Mins/Day — Earn ₹40,000 Per Week from Home!',
+      date:'2026-10-21', status:'Scam', confidence:100,
+      scamReason:'🚩 Classic YouTube like / Telegram task scam. Promises ₹40,000/week to freshers then funnels them into a Telegram crypto deposit scheme.',
+      aiReason:'🚩 Task scam — liking YouTube videos + Telegram crypto bot.',
+      body:`Hi Student!\n\nAre you looking for pocket money? Help international influencers grow.\n\nAll you do: Subscribe to 3 YouTube channels per day + screenshot.\nPay: ₹250 per like immediately via UPI. Up to ₹40,000/week!\n\nJoin our Telegram for trial task: https://t.me/GlobalInfluencerTaskDesk\n\nReceive ₹500 welcome bonus on joining!` },
+  ];
+
+  /* ─────────────────────────────────────────────────────
+     STATE
+  ───────────────────────────────────────────────────── */
+  let emails = [];
+  let activityLog = [];
+  let currentTab = 'board';
+  let activeFUEmail = null;
+  let activeInterviewEmail = null;
+  let currentFUTone = 'polite';
+  let countdownTimer = null;
+
+  /* ─────────────────────────────────────────────────────
+     INIT
+  ───────────────────────────────────────────────────── */
+  function init() {
+    try { emails = JSON.parse(localStorage.getItem('jha_emails') || 'null') || clone(DEMO_EMAILS) }
+    catch { emails = clone(DEMO_EMAILS) }
+    try { activityLog = JSON.parse(localStorage.getItem('jha_log') || '[]') } catch { activityLog = [] }
+
+    updateApiLabel();
+    renderAll();
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeAllModals();
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') { openModal('addEmailModal'); e.preventDefault(); }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'R') { runAutopilot(); e.preventDefault(); }
+    });
+
+    // Close modals on overlay click
+    document.querySelectorAll('[id$="Modal"]').forEach(el => {
+      el.addEventListener('click', ev => { if (ev.target === el) closeModal(el.id); });
+    });
+  }
+
+  function clone(o) { return JSON.parse(JSON.stringify(o)) }
+
+  function save() {
+    localStorage.setItem('jha_emails', JSON.stringify(emails));
+    localStorage.setItem('jha_log', JSON.stringify(activityLog.slice(0, 200)));
+  }
+
+  function log(msg, type = 'info') {
+    activityLog.unshift({ ts: new Date().toISOString(), msg, type });
+    save();
+    if (currentTab === 'log') renderLog();
+  }
+
+  /* ─────────────────────────────────────────────────────
+     RENDER DISPATCHER
+  ───────────────────────────────────────────────────── */
+  function renderAll() {
+    renderStats();
+    renderChart();
+    renderFunnel();
+    renderKanban();
+    renderScam();
+    renderRaw();
+    if (currentTab === 'log') renderLog();
+    lucide.createIcons();
+  }
+
+  /* ─────────────────────────────────────────────────────
+     STATS
+  ───────────────────────────────────────────────────── */
+  function renderStats() {
+    const app  = emails.filter(e => e.status === 'Applied').length;
+    const iv   = emails.filter(e => e.status === 'Interview').length;
+    const off  = emails.filter(e => e.status === 'Offer').length;
+    const scm  = emails.filter(e => e.status === 'Scam').length;
+    const fu   = emails.filter(e => e.status === 'Applied' && daysAgo(e.date) >= 7).length;
+
+    setText('sTotalApplied', app);
+    setText('sFollowUp', fu);
+    setText('sInterviews', iv);
+    setText('sOffers', off);
+    setText('sScams', scm);
+    setText('scamBadge', scm);
+    setText('mobileScamBadge', scm);
+    setText('mailCount', emails.length);
+    setText('cntApplied', app);
+    setText('cntInterview', iv);
+    setText('cntOffer', off);
+    setText('cntRejected', emails.filter(e => e.status === 'Rejected').length);
+  }
+
+  /* ─────────────────────────────────────────────────────
+     MINI BAR CHART
+  ───────────────────────────────────────────────────── */
+  function renderChart() {
+    const container = document.getElementById('activityChart');
+    if (!container) return;
+    const colorMap = { Applied:'#60a5fa', Interview:'#34d399', Offer:'#fbbf24', Rejected:'#64748b', Scam:'#f87171' };
+    const recent = emails.slice().sort((a,b)=>a.date<b.date?-1:1).slice(-12);
+    container.innerHTML = recent.map(e => {
+      const c = colorMap[e.status] || '#64748b';
+      const heights = { Applied:35, Interview:60, Offer:80, Rejected:20, Scam:50 };
+      const h = heights[e.status] || 30;
+      return `<div class="flex-1 flex flex-col items-center gap-1 group cursor-default" title="${esc(e.company)} — ${e.status}">
+        <div class="w-full rounded-t-sm chart-bar" style="height:${h}%;background:${c};opacity:.75;min-height:4px;max-height:80px"></div>
+        <span class="text-[8px] text-slate-600 rotate-45 origin-left truncate w-full overflow-hidden">${esc(e.company.split(' ')[0])}</span>
+      </div>`;
+    }).join('');
+  }
+
+  /* ─────────────────────────────────────────────────────
+     FUNNEL BARS
+  ───────────────────────────────────────────────────── */
+  function renderFunnel() {
+    const total = emails.filter(e => e.status !== 'Scam').length || 1;
+    const steps = [
+      { label:'Applied',   count:emails.filter(e=>e.status==='Applied').length,   color:'#60a5fa' },
+      { label:'Interview', count:emails.filter(e=>e.status==='Interview').length, color:'#34d399' },
+      { label:'Offer',     count:emails.filter(e=>e.status==='Offer').length,     color:'#fbbf24' },
+    ];
+    document.getElementById('funnelBars').innerHTML = steps.map(s => {
+      const pct = Math.round((s.count / total) * 100);
+      return `<div>
+        <div class="flex justify-between mb-1 text-[10px]">
+          <span class="text-slate-400">${s.label}</span>
+          <span class="font-mono" style="color:${s.color}">${s.count} (${pct}%)</span>
+        </div>
+        <div class="h-2 rounded-full overflow-hidden" style="background:rgba(255,255,255,.06)">
+          <div class="h-full rounded-full transition-all duration-700" style="width:${pct}%;background:${s.color};opacity:.8"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ─────────────────────────────────────────────────────
+     KANBAN
+  ───────────────────────────────────────────────────── */
+  function renderKanban() {
+    const q = searchQ();
+    ['Applied','Interview','Offer','Rejected'].forEach(status => {
+      const list = emails.filter(e => e.status === status && matches(e, q));
+      renderCol('col' + status, list);
+    });
+  }
+
+  function renderCol(id, list) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (!list.length) {
+      el.innerHTML = `<div class="p-6 text-center text-slate-600 text-xs border border-dashed rounded-xl" style="border-color:rgba(255,255,255,.06)">No items</div>`;
+      return;
+    }
+    el.innerHTML = list.map(card).join('');
+  }
+
+  function card(e) {
+    const d = daysAgo(e.date);
+    const fu = e.status === 'Applied' && d >= 7;
+    const initials = e.company.slice(0,2).toUpperCase();
+    const gradients = {
+      Applied:'from-blue-900/30', Interview:'from-emerald-900/30',
+      Offer:'from-amber-900/30', Rejected:'from-slate-900/30',
+    };
+    const grad = gradients[e.status] || '';
+
+    return `<div class="slide-up rounded-xl overflow-hidden group transition-all hover:-translate-y-px"
+         style="background:rgba(22,32,54,.8);border:1px solid rgba(255,255,255,.07)">
+
+      <!-- Card header -->
+      <div class="flex items-start gap-2.5 p-3 border-b" style="border-color:rgba(255,255,255,.05)">
+        <div class="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center font-bold text-xs text-white"
+             style="background:linear-gradient(135deg,rgba(124,58,237,.4),rgba(6,182,212,.3));border:1px solid rgba(255,255,255,.1)">
+          ${initials}
+        </div>
+        <div class="flex-1 min-w-0">
+          <h4 class="text-xs font-bold text-white truncate group-hover:text-purple-300 transition-colors">${esc(e.company)}</h4>
+          <p class="text-[10px] text-slate-500">${e.date || 'Recent'}</p>
+        </div>
+        <button onclick="viewEmail('${e.id}')" title="Inspect email" class="text-slate-500 hover:text-slate-200 p-1 rounded transition shrink-0">
+          <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+
+      <div class="p-3 space-y-2">
+        <!-- Role -->
+        <p class="text-xs text-slate-200 font-medium leading-snug line-clamp-2">${esc(e.role)}</p>
+
+        <!-- Status-specific badge -->
+        ${cardBadge(e, fu, d)}
+
+        <!-- Bottom actions row -->
+        <div class="flex items-center justify-between pt-1.5 border-t" style="border-color:rgba(255,255,255,.05)">
+          <div class="text-[10px]">${cardAction(e, fu)}</div>
+          <select onchange="moveCard('${e.id}', this.value)"
+            class="text-[10px] rounded-md px-1.5 py-0.5 text-slate-300 focus:outline-none"
+            style="background:rgba(10,16,35,.9);border:1px solid rgba(255,255,255,.1)">
+            ${['Applied','Interview','Offer','Rejected','Scam'].map(s=>`<option value="${s}"${e.status===s?' selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function cardBadge(e, fu, d) {
+    if (e.status === 'Interview') {
+      const cd = countdown(e.interviewDate);
+      const cdClass = cd.includes('Today')||cd.includes('Tomorrow') ? 'countdown-red' :
+                      cd.includes('d') && parseInt(cd) <= 3        ? 'countdown-amber' : 'countdown-green';
+      return `<div class="flex items-center justify-between p-2 rounded-lg text-[11px]"
+                   style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2)">
+        <div class="flex items-center gap-1 text-emerald-300 truncate">
+          <i data-lucide="calendar" class="w-3 h-3 shrink-0"></i>
+          <span class="truncate">${esc(e.interviewDate || 'Upcoming')}</span>
+        </div>
+        <span class="ml-2 shrink-0 font-mono text-[10px] px-1.5 py-0.5 rounded ${cdClass}">${cd}</span>
+      </div>`;
+    }
+    if (e.status === 'Offer') {
+      return `<div class="p-2 rounded-lg text-[11px] space-y-0.5"
+                   style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2)">
+        <div class="flex items-center gap-1 text-amber-300 font-bold">
+          <i data-lucide="badge-dollar-sign" class="w-3 h-3 text-amber-400"></i>
+          ${esc(e.salary || 'Competitive Offer')}
+        </div>
+        <div class="text-[10px] text-amber-400/70">${esc(e.location || 'HQ / Remote')}</div>
+      </div>`;
+    }
+    if (fu) {
+      return `<div class="flex items-center justify-between p-1.5 rounded-lg text-[10px]"
+                   style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2)">
+        <span class="flex items-center gap-1 text-amber-300">
+          <i data-lucide="clock" class="w-3 h-3"></i> No reply: ${d} days
+        </span>
+        <span class="text-amber-400 font-bold">Follow-Up!</span>
+      </div>`;
+    }
+    return `<div class="text-[10px] text-slate-600">Confidence: ${e.confidence || 95}%</div>`;
+  }
+
+  function cardAction(e, fu) {
+    if (e.status === 'Interview')
+      return `<button onclick="openPrepModal('${e.id}')"
+        class="flex items-center gap-1 px-2 py-1 rounded-md font-bold transition"
+        style="background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.25);color:#6ee7b7">
+        <i data-lucide="zap" class="w-3 h-3"></i>AI Prep Kit
+      </button>`;
+    if (e.status === 'Offer')
+      return `<button onclick="celebrate('${e.id}')"
+        class="flex items-center gap-1 px-2 py-1 rounded-md font-bold transition"
+        style="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.25);color:#fcd34d">
+        <i data-lucide="party-popper" class="w-3 h-3"></i>Celebrate!
+      </button>`;
+    if (fu)
+      return `<button onclick="openFU('${e.id}')"
+        class="flex items-center gap-1 px-2 py-1 rounded-md font-bold transition"
+        style="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.25);color:#fcd34d">
+        <i data-lucide="send" class="w-3 h-3"></i>Follow-Up
+      </button>`;
+    return `<span class="text-slate-600">Conf: ${e.confidence || 95}%</span>`;
+  }
+
+  /* ─────────────────────────────────────────────────────
+     SCAM FRAUD CENTER
+  ───────────────────────────────────────────────────── */
+  function renderScam() {
+    const g = document.getElementById('scamGrid');
+    if (!g) return;
+    const scams = emails.filter(e => e.status === 'Scam');
+    if (!scams.length) {
+      g.innerHTML = `<div class="col-span-2 p-10 text-center glass rounded-2xl">
+        <i data-lucide="shield-check" class="w-10 h-10 text-emerald-400 mx-auto mb-3"></i>
+        <h4 class="font-bold text-white text-sm">No Active Threats</h4>
+        <p class="text-xs text-slate-500 mt-1">All detected scams listed here. Your mailbox is currently clean.</p>
+      </div>`; return;
+    }
+    g.innerHTML = scams.map(s => `
+      <div class="rounded-2xl p-5 space-y-3 transition"
+           style="background:linear-gradient(135deg,rgba(239,68,68,.08),rgba(15,23,42,.9));border:1px solid rgba(239,68,68,.3)">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                 style="background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.3)">
+              <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i>
+            </div>
+            <div>
+              <h4 class="text-sm font-bold text-white">${esc(s.company)}</h4>
+              <p class="text-[10px] font-mono text-rose-400/70 truncate max-w-xs">${esc(s.sender)}</p>
+            </div>
+          </div>
+          <span class="text-[9px] uppercase font-bold px-2 py-0.5 rounded-full whitespace-nowrap"
+                style="background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.3);color:#fca5a5">
+            ⛔ Quarantined
+          </span>
+        </div>
+
+        <div>
+          <p class="text-xs font-semibold text-slate-200">Claimed: <span class="text-white">${esc(s.role)}</span></p>
+          <p class="text-[11px] text-slate-500 italic mt-0.5 line-clamp-1">"${esc(s.subject)}"</p>
+        </div>
+
+        <div class="p-3 rounded-xl text-xs leading-relaxed space-y-1"
+             style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2)">
+          <div class="font-bold flex items-center gap-1.5 text-rose-400">
+            <i data-lucide="shield-x" class="w-3.5 h-3.5"></i>Detected Scam Vector
+          </div>
+          <p class="text-rose-200/90">${esc(s.scamReason || s.aiReason)}</p>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t text-xs" style="border-color:rgba(255,255,255,.06)">
+          <button onclick="viewEmail('${s.id}')" class="text-slate-400 hover:text-white flex items-center gap-1 transition">
+            <i data-lucide="eye" class="w-3.5 h-3.5"></i>Inspect Raw
+          </button>
+          <div class="flex gap-2">
+            <button onclick="copyScamWarn('${s.id}')"
+              class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-slate-300 transition"
+              style="background:rgba(30,41,59,.9);border:1px solid rgba(255,255,255,.08)">
+              <i data-lucide="copy" class="w-3 h-3"></i>Copy Warning
+            </button>
+            <button onclick="deleteEmail('${s.id}')"
+              class="flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold transition"
+              style="background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.3);color:#fca5a5">
+              <i data-lucide="trash-2" class="w-3 h-3"></i>Delete
+            </button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  /* ─────────────────────────────────────────────────────
+     RAW MAILBOX
+  ───────────────────────────────────────────────────── */
+  function renderRaw() {
+    const el = document.getElementById('rawList');
+    if (!el) return;
+    const cat = document.getElementById('rawFilter')?.value || 'ALL';
+    const q = searchQ();
+    const list = emails.filter(e => (cat === 'ALL' || e.status === cat) && matches(e, q));
+
+    if (!list.length) {
+      el.innerHTML = `<div class="p-8 text-center text-slate-500 text-xs glass rounded-xl">No emails match current filters.</div>`;
+      return;
+    }
+
+    const statusStyle = {
+      Applied:  'background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#93c5fd',
+      Interview:'background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);color:#6ee7b7',
+      Offer:    'background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:#fcd34d',
+      Rejected: 'background:rgba(100,116,139,.1);border:1px solid rgba(100,116,139,.25);color:#94a3b8',
+      Scam:     'background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5',
+    };
+
+    el.innerHTML = list.map(e => `
+      <div onclick="viewEmail('${e.id}')"
+        class="glass rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:border-slate-500 transition group">
+        <div class="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center font-bold text-xs text-white"
+             style="background:rgba(124,58,237,.3);border:1px solid rgba(255,255,255,.1)">
+          ${esc(e.company.slice(0,2).toUpperCase())}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs font-bold text-white group-hover:text-purple-300 transition">${esc(e.company)}</span>
+            <span class="text-[10px] text-slate-500 truncate">${esc(e.sender)}</span>
+            <span class="text-[10px] text-slate-600">• ${e.date}</span>
+          </div>
+          <p class="text-xs text-slate-300 truncate mt-0.5">${esc(e.subject)}</p>
+          <p class="text-[10px] text-slate-500 truncate">Role: ${esc(e.role)}</p>
+        </div>
+        <span class="shrink-0 text-[10px] px-2 py-0.5 rounded-full font-semibold" style="${statusStyle[e.status] || ''}">
+          ${e.status}
+        </span>
+        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600 group-hover:text-slate-300 shrink-0 transition"></i>
+      </div>`).join('');
+  }
+
+  /* ─────────────────────────────────────────────────────
+     ACTIVITY LOG
+  ───────────────────────────────────────────────────── */
+  function renderLog() {
+    const el = document.getElementById('logList');
+    if (!el) return;
+    if (!activityLog.length) {
+      el.innerHTML = `<div class="p-8 text-center text-slate-500 text-xs glass rounded-xl">No activity yet. Run Autopilot to start!</div>`;
+      return;
+    }
+    const icons = { info:'info', success:'check-circle', warning:'alert-triangle', scam:'shield-x', move:'move-right' };
+    const colors = { info:'text-slate-400', success:'text-emerald-400', warning:'text-amber-400', scam:'text-rose-400', move:'text-blue-400' };
+    el.innerHTML = activityLog.slice(0, 80).map(l => {
+      const t = new Date(l.ts).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+      const d = new Date(l.ts).toLocaleDateString('en-IN', {day:'2-digit', month:'short'});
+      return `<div class="glass rounded-xl p-3 flex items-start gap-3 text-xs">
+        <i data-lucide="${icons[l.type]||'info'}" class="w-4 h-4 shrink-0 mt-0.5 ${colors[l.type]||colors.info}"></i>
+        <div class="flex-1 text-slate-300">${esc(l.msg)}</div>
+        <span class="text-[10px] text-slate-600 shrink-0 font-mono">${d} ${t}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function clearLog() {
+    if (!confirm('Clear all activity log entries?')) return;
+    activityLog = [];
+    save();
+    renderLog();
+    toast('Activity log cleared.', 'info');
+  }
+
+  /* ─────────────────────────────────────────────────────
+     AI AUTOPILOT ENGINE
+  ───────────────────────────────────────────────────── */
+  let isRunning = false;
+
+  async function runAutopilot() {
+    if (isRunning) return;
+    isRunning = true;
+    const btn = document.getElementById('runBtn');
+    const lbl = document.getElementById('runBtnLabel');
+    btn.disabled = true;
+    lbl.textContent = 'Analyzing…';
+    showProgress(true);
+    setProgress(10, 'Initializing Autopilot…');
+    log('Autopilot analysis started for ' + emails.length + ' emails.', 'info');
+
+    const key   = (localStorage.getItem('jha_key') || '').trim();
+    const model = localStorage.getItem('jha_model') || 'gemini-2.5-flash';
+
+    try {
+      if (key) {
+        setProgress(30, `Streaming batch to ${model}…`);
+        emails = await geminiParse(emails, key, model);
+        setProgress(90, 'Merging structured output…');
+        log(`Gemini (${model}) analysis complete — ${emails.length} emails classified.`, 'success');
+        toast(`Gemini ${model} analysis done! ✨`, 'success');
+      } else {
+        setProgress(40, 'Running Intelligent Heuristic NLP…');
+        await delay(600);
+        emails = emails.map(heuristic);
+        setProgress(88, 'Heuristic engine complete.');
+        log('Offline heuristic NLP analysis complete.', 'success');
+        toast('Batch parsed via Intelligent Heuristic Engine! (Add API key for live Gemini inference)', 'info');
+      }
+    } catch (err) {
+      console.error(err);
+      toast('Gemini error: ' + err.message + ' — falling back to heuristic.', 'warning');
+      log('Gemini API error — fell back to heuristic: ' + err.message, 'warning');
+      emails = emails.map(heuristic);
+    }
+
+    save();
+    setProgress(100, 'Done!');
+    await delay(500);
+    showProgress(false);
+    btn.disabled = false;
+    lbl.textContent = 'Run Autopilot';
+    isRunning = false;
+    renderAll();
+  }
+
+  async function geminiParse(batch, apiKey, model) {
+    const prompt = `You are an expert AI Job Application Triage Assistant for students.
+Analyze this JSON email array. For EACH email classify and extract:
+- status: "Applied" | "Interview" | "Offer" | "Rejected" | "Scam"
+- company, role (extract from subject/body if unclear)
+- confidence: integer 0-100
+- aiReason: concise reason for classification
+- scamReason: specific red flag string (only for Scam, else null)
+- interviewDate: extracted date/time string (only for Interview, else null)
+- interviewType: round format string (only for Interview, else null)
+- salary: compensation string (only for Offer, else null)
+- location: location string (only for Offer, else null)
+
+Scam indicators: upfront fees (laptop, proctoring, gate pass), unrealistic pay (₹40k/week, ₹8k/day), WhatsApp-only funnels, Telegram task bots, Aadhaar/PAN before interview, free email domains impersonating companies.
+
+Input:
+${JSON.stringify(batch.map(e=>({id:e.id,sender:e.sender,subject:e.subject,body:e.body.slice(0,600)})))}
+
+Return ONLY a valid JSON array. No markdown. No explanation.`;
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents:[{parts:[{text:prompt}]}],
+        generationConfig:{ temperature:0.1, responseMimeType:'application/json' }
+      })
+    });
+
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(`HTTP ${res.status}: ${t.slice(0,200)}`);
+    }
+
+    const result = await res.json();
+    const raw = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!raw) throw new Error('Empty response from Gemini');
+
+    const parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+    return batch.map(orig => {
+      const found = parsed.find(p => p.id === orig.id);
+      if (!found) return orig;
+      return { ...orig, ...found };
+    });
+  }
+
+  function heuristic(e) {
+    const txt = `${e.subject||''} ${e.body||''} ${e.sender||''}`.toLowerCase();
+    let status = e.status, confidence = 95, scamReason = e.scamReason || null, aiReason = e.aiReason;
+
+    // Scam patterns
+    if (/courier deposit|laptop insurance|laptop.*fee|security deposit|registration fee|gate pass|proctoring fee/i.test(txt) ||
+        /earn ₹\d|daily payout|whatsapp only|wa\.me\//i.test(txt) ||
+        /t\.me\/|telegram.*task|youtube.*like|like.*youtube/i.test(txt) ||
+        /aadhaar.*before|pan card.*before|rediffmail\.com/i.test(txt)) {
+      status = 'Scam'; confidence = 99;
+      if (/laptop|courier|deposit|security/i.test(txt))
+        scamReason = '🚩 Upfront financial fee required for company equipment delivery.';
+      else if (/whatsapp|wa\.me/i.test(txt))
+        scamReason = '🚩 WhatsApp-only interview funnel — no corporate email verification.';
+      else if (/telegram|youtube.*like/i.test(txt))
+        scamReason = '🚩 Task bot scam (liking videos/Telegram crypto) targeting students.';
+      else if (/aadhaar|pan card/i.test(txt))
+        scamReason = '🚩 Identity theft risk — government IDs demanded before interview.';
+      else if (/proctoring|gate pass/i.test(txt))
+        scamReason = '🚩 Fake exam fee — legitimate tech firms never charge test candidates.';
+      else
+        scamReason = '🚩 Multiple fraud vectors detected.';
+      aiReason = scamReason;
+    }
+    // Offer
+    else if (/offer letter|pleased to offer|compensation breakdown|joining bonus|\bctc\b|stock grant|equity/i.test(txt)) {
+      status = 'Offer'; confidence = 99; aiReason = 'Verified formal compensation offer.';
+    }
+    // Interview
+    else if (/\binterview\b|meet\.google\.com|zoom\.us|webex|pair programming|round [12]|technical screen|invitation:/i.test(txt)) {
+      status = 'Interview'; confidence = 98; aiReason = 'Interview schedule confirmed with video/assessment details.';
+    }
+    // Rejected
+    else if (/unfortunately|other candidates|unable to offer|decided not to advance|position.*closed/i.test(txt)) {
+      status = 'Rejected'; confidence = 97; aiReason = 'Formal rejection / candidate archive notice.';
+    }
+    // Applied
+    else {
+      status = 'Applied'; confidence = 93; aiReason = 'Application receipt / ATS logging confirmation.';
+    }
+
+    return { ...e, status, confidence, scamReason, aiReason };
+  }
+
+  /* ─────────────────────────────────────────────────────
+     INTERVIEW PREP MODAL
+  ───────────────────────────────────────────────────── */
+  const COMPANY_RADAR = {
+    Google:    'Focuses on Clean Code, Time/Space Complexity, large-scale distributed systems, Bigtable, Spanner, and "Googleyness" behavioral dimensions.',
+    Uber:      'High-throughput real-time dispatch. Expect geospatial indexing (H3), distributed rate limiters, Redis caches, and event-driven architecture.',
+    Atlassian: 'Developer tooling at scale (Jira/Confluence). Git data structures, feature flags, frontend perf, and the 5 Atlassian values.',
+    Adobe:     'Creative Cloud & Document Cloud. Canvas/WebGL rendering lifecycle, memory footprint, OOP SOLID patterns, browser DOM performance.',
+    Swiggy:    'Hyperlocal logistics. Redis pub/sub queuing, microservice fault tolerance, distributed transactions, and order state machines.',
+    CRED:      'Premium fintech. Payment gateway resilience, UPI integrations, idempotency keys, fraud detection ML pipelines.',
+    Linear:    'Developer experience tools. Offline-first CRDT sync, React performance, keyboard accessibility, and deterministic UI.',
+    Microsoft: 'Azure cloud scale, Windows internals, TypeScript ecosystem, OOP design patterns, and "growth mindset" culture.',
+    Stripe:    'Payment infrastructure reliability 99.9999%. Idempotency, webhook retry strategies, TLS/PCI compliance, and API versioning.',
+  };
+
+  const COMMON_QS = [
+    { q:'Design a distributed rate limiter / real-time queue.', t:'Compare Token Bucket vs Sliding Window Log; explain Redis ZSET implementation.' },
+    { q:'Walk through your hardest production debugging session.', t:'STAR method: profiling tools, log analysis, root cause, measurable improvement.' },
+    { q:'Optimistic vs Pessimistic UI update trade-offs?', t:'Cover network latency UX, rollback on failure, and user trust/confidence factors.' },
+  ];
+
+  function openPrepModal(id) {
+    const e = emails.find(x => x.id === id);
+    if (!e) return;
+    activeInterviewEmail = e;
+
+    document.getElementById('prepTitle').textContent = `Interview Prep: ${e.company}`;
+    document.getElementById('prepSubtitle').textContent = `${e.role} · Round Intelligence`;
+    document.getElementById('prepSchedule').textContent = `Scheduled: ${e.interviewDate || 'Upcoming'}`;
+
+    // Countdown
+    const cd = countdown(e.interviewDate);
+    const cdEl = document.getElementById('prepCountdown');
+    cdEl.textContent = cd;
+    cdEl.className = `font-mono text-[11px] px-2 py-0.5 rounded ${
+      cd.includes('Today')||cd.includes('Tomorrow') ? 'countdown-red' : 'countdown-green'
+    }`;
+
+    // Radar
+    document.getElementById('prepRadar').textContent =
+      COMPANY_RADAR[e.company] ||
+      'High-impact team valuing clean design patterns, architectural trade-off articulation, and collaborative problem-solving.';
+
+    // Questions
+    document.getElementById('prepQs').innerHTML = COMMON_QS.map(q => `
+      <li class="space-y-0.5">
+        <div class="font-semibold text-white">${esc(q.q)}</div>
+        <div class="text-[11px] text-slate-400">💡 ${esc(q.t)}</div>
+      </li>`).join('');
+
+    // Ask them
+    const ask = [
+      'What does a typical release cadence and on-call rotation look like for this team?',
+      'What is the single most exciting technical challenge your team solved last quarter?',
+      'How is developer productivity measured, and how does this team grow engineers into tech leads?',
+    ];
+    document.getElementById('prepAsk').innerHTML = ask.map(a => `
+      <li class="flex items-start gap-1.5"><span style="color:#a78bfa">›</span> ${esc(a)}</li>`).join('');
+
+    openModal('interviewModal');
+    lucide.createIcons();
+    log(`Opened AI Prep Kit for ${e.company} — ${e.role}.`, 'success');
+  }
+
+  function copyPrepNotes() {
+    if (!activeInterviewEmail) return;
+    const e = activeInterviewEmail;
+    const text = [
+      `🎯 Interview Prep: ${e.company} — ${e.role}`,
+      `📅 ${e.interviewDate || 'Upcoming'}  |  ${e.interviewType || 'Technical Round'}`,
+      '',
+      '📌 Company Radar:',
+      COMPANY_RADAR[e.company] || 'Deep-dive into their tech stack before the call.',
+      '',
+      '🎯 Top Questions to Expect:',
+      ...COMMON_QS.map((q,i) => `${i+1}. ${q.q}\n   Tip: ${q.t}`),
+      '',
+      '🙋 Ask the Interviewer:',
+      '• Release cadence & on-call rotation?',
+      '• Biggest technical challenge last quarter?',
+      '• How do engineers grow into tech leads here?',
+      '',
+      '✅ Pre-Call Checklist: Camera ✓ Quiet room ✓ IDE open ✓ Resume ready ✓',
+    ].join('\n');
+    navigator.clipboard.writeText(text).catch(() => {});
+    toast('Prep notes copied to clipboard!', 'success');
+  }
+
+  /* ─────────────────────────────────────────────────────
+     FOLLOW-UP MODAL
+  ───────────────────────────────────────────────────── */
+  function openFU(id) {
+    const e = emails.find(x => x.id === id);
+    if (!e) return;
+    activeFUEmail = e;
+    const d = daysAgo(e.date);
+    setText('fuCompany', e.company);
+    setText('fuRole', e.role);
+    setText('fuDays', `${d}d without reply`);
+    currentFUTone = 'polite';
+    setTone('polite');
+    openModal('followUpModal');
+    lucide.createIcons();
+    log(`Opened follow-up drafter for ${e.company}.`, 'info');
+  }
+
+  function setTone(tone) {
+    currentFUTone = tone;
+    const e = activeFUEmail;
+    if (!e) return;
+    const d = daysAgo(e.date);
+
+    document.getElementById('tonePolite').style.background =
+      tone === 'polite' ? 'rgba(245,158,11,.25)' : 'rgba(30,41,59,.8)';
+    document.getElementById('toneCasual').style.background =
+      tone === 'casual' ? 'rgba(245,158,11,.25)' : 'rgba(30,41,59,.8)';
+
+    const polite = `Subject: Follow-up on Application: ${e.role} — Pratham
+
+Dear ${e.company} Recruiting Team,
+
+I hope your week is going well.
+
+I am writing to politely follow up on my application for the ${e.role} position submitted ${d} days ago (${e.date}).
+
+I remain very enthusiastic about contributing to ${e.company}'s engineering initiatives. Please let me know if you require any additional materials, portfolio links, or references from my end.
+
+Thank you for your time and consideration!
+
+Best regards,
+Pratham
+Portfolio: https://github.com/pratham
+Phone: +91 98765 43210`;
+
+    const casual = `Subject: Quick check-in: ${e.role} at ${e.company}
+
+Hi ${e.company} Team!
+
+Hope things are going great on your end. Wanted to send a quick check-in regarding my application for ${e.role}.
+
+I've been shipping some cool new features on my open-source projects recently and am even more excited about the kind of problems your engineering team tackles.
+
+Looking forward to hearing from you — no rush at all!
+
+Cheers,
+Pratham`;
+
+    document.getElementById('fuDraft').value = tone === 'polite' ? polite : casual;
+  }
+
+  function copyFollowUp() {
+    const text = document.getElementById('fuDraft').value;
+    navigator.clipboard.writeText(text).catch(() => {});
+    toast('Follow-up email copied to clipboard!', 'success');
+    log(`Copied follow-up for ${activeFUEmail?.company}.`, 'info');
+  }
+
+  function markFollowedUp() {
+    if (!activeFUEmail) return;
+    const idx = emails.findIndex(x => x.id === activeFUEmail.id);
+    if (idx > -1) emails[idx].date = new Date().toISOString().split('T')[0];
+    save();
+    renderAll();
+    closeModal('followUpModal');
+    toast(`Followed up with ${activeFUEmail.company} — timer reset!`, 'success');
+    log(`Marked followed-up: ${activeFUEmail.company}.`, 'success');
+  }
+
+  /* ─────────────────────────────────────────────────────
+     EMAIL DETAIL MODAL
+  ───────────────────────────────────────────────────── */
+  function viewEmail(id) {
+    const e = emails.find(x => x.id === id);
+    if (!e) return;
+
+    const statusStyle = {
+      Applied:  'background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#93c5fd',
+      Interview:'background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);color:#6ee7b7',
+      Offer:    'background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#fcd34d',
+      Rejected: 'background:rgba(100,116,139,.15);border:1px solid rgba(100,116,139,.3);color:#94a3b8',
+      Scam:     'background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.35);color:#fca5a5',
+    };
+
+    const badge = document.getElementById('emailModalBadge');
+    badge.textContent = e.status;
+    badge.setAttribute('style', statusStyle[e.status] || '');
+
+    setText('emailModalSubject', e.subject || '(No subject)');
+    setText('emailModalMeta', `From: ${e.sender || 'Unknown'} • ${e.date || 'Recent'}`);
+    document.getElementById('emailModalBody').textContent = e.body || '(No body)';
+    setText('emailModalConf', `${e.confidence || 95}% conf`);
+    setText('emailModalReason', e.scamReason || e.aiReason || 'Classified via structured AI pattern analysis.');
+
+    openModal('emailModal');
+    lucide.createIcons();
+  }
+
+  /* ─────────────────────────────────────────────────────
+     ADD EMAIL MANUALLY
+  ───────────────────────────────────────────────────── */
+  function submitNewEmail() {
+    const subject = document.getElementById('newSubject').value.trim();
+    const sender  = document.getElementById('newSender').value.trim();
+    const body    = document.getElementById('newBody').value.trim();
+    if (!body) { toast('Please paste an email body!', 'warning'); return; }
+
+    // Guess company
+    let company = 'Tech Company';
+    if (subject.toLowerCase().includes(' at ')) {
+      company = subject.split(/ at /i)[1].split(/[-–|!]/)[0].trim().slice(0, 30);
+    } else if (sender.includes('@')) {
+      const domain = sender.split('@')[1]?.split('.')[0] || 'Company';
+      company = domain.charAt(0).toUpperCase() + domain.slice(1);
+    }
+
+    const raw = {
+      id: 'U' + Date.now(),
+      company, role: 'Software Engineer',
+      sender: sender || 'HR Recruiting <hr@company.com>',
+      subject: subject || 'Job Application Update',
+      date: new Date().toISOString().split('T')[0],
+      status: 'Applied', confidence: 90,
+      aiReason: 'Newly submitted — parsed by heuristic engine.',
+      body
+    };
+
+    const parsed = heuristic(raw);
+    emails.unshift(parsed);
+    save();
+    renderAll();
+    closeModal('addEmailModal');
+    document.getElementById('newSubject').value = '';
+    document.getElementById('newSender').value = '';
+    document.getElementById('newBody').value = '';
+
+    toast(`Email parsed as "${parsed.status}" and added to board!`, 'success');
+    log(`New email added: ${parsed.company} → ${parsed.status}`, 'info');
+    if (parsed.status === 'Scam') { switchTab('scam'); }
+  }
+
+  /* ─────────────────────────────────────────────────────
+     STATUS CHANGE / DELETE / CELEBRATE
+  ───────────────────────────────────────────────────── */
+  function moveCard(id, newStatus) {
+    const idx = emails.findIndex(e => e.id === id);
+    if (idx < 0) return;
+    const old = emails[idx].status;
+    emails[idx].status = newStatus;
+    save();
+    renderAll();
+    toast(`Moved ${emails[idx].company}: ${old} → ${newStatus}`, 'info');
+    log(`Moved card: ${emails[idx].company} → ${newStatus}`, 'move');
+    if (newStatus === 'Offer') celebrate(id);
+  }
+
+  function deleteEmail(id) {
+    const e = emails.find(x => x.id === id);
+    if (!e || !confirm(`Delete "${e.company}" from records?`)) return;
+    emails = emails.filter(x => x.id !== id);
+    save();
+    renderAll();
+    toast('Email removed from pipeline.', 'info');
+    log(`Deleted: ${e.company} (${e.status})`, 'info');
+  }
+
+  function celebrate(id) {
+    const e = emails.find(x => x.id === id);
+    const burst = (angle, origin) => confetti({ particleCount:60, angle, spread:55, origin });
+    confetti({ particleCount:80, spread:70, origin:{y:.6} });
+    setTimeout(() => { burst(60,{x:0}); burst(120,{x:1}); }, 250);
+    toast(`🎉 Congratulations on your ${e ? e.company : ''} offer!`, 'success');
+    log(`Celebrated offer from ${e?.company}.`, 'success');
+    viewEmail(id);
+  }
+
+  /* ─────────────────────────────────────────────────────
+     SCAM HELPERS
+  ───────────────────────────────────────────────────── */
+  function copyScamWarn(id) {
+    const s = emails.find(e => e.id === id);
+    if (!s) return;
+    const text = `⚠️ SCAM WARNING — DO NOT ENGAGE\n"${s.company}" is fraudulent.\nReason: ${s.scamReason || s.aiReason}\n\nNever pay money upfront or share Aadhaar/PAN before a verified interview!`;
+    navigator.clipboard.writeText(text).catch(() => {});
+    toast('Scam warning copied — share with your batch!', 'success');
+  }
+
+  function copyFresherRules() {
+    const text = `🛡️ Campus Placement Anti-Scam Rules (Share With Your Batch!)\n\n1. ❌ NEVER pay upfront — no laptop fee, no gate pass, no proctoring fee.\n2. ❌ Legit HRs use corporate emails (@google.com, @tcs.com), not @gmail.com or @rediffmail.com.\n3. ❌ Interviews are never WhatsApp-only or via random Telegram bots.\n4. ❌ Never share Aadhaar / PAN / bank statements before a verified offer letter.\n5. ❌ If it sounds too good (₹40k/week for liking videos), it is a scam.\n\nStay safe! 🙏`;
+    navigator.clipboard.writeText(text).catch(() => {});
+    toast('Fresher safety rules copied — share on your college groups!', 'success');
+  }
+
+  /* ─────────────────────────────────────────────────────
+     EXPORT CSV
+  ───────────────────────────────────────────────────── */
+  function exportCSV() {
+    const header = 'Company,Role,Status,Date,Confidence,Salary,InterviewDate,Sender\n';
+    const rows = emails.map(e =>
+      [e.company,e.role,e.status,e.date,e.confidence||95,e.salary||'',e.interviewDate||'',e.sender]
+        .map(v => `"${String(v||'').replace(/"/g,'""')}"`)
+        .join(',')
+    ).join('\n');
+    const blob = new Blob([header + rows], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'job_hunt_autopilot.csv'; a.click();
+    URL.revokeObjectURL(url);
+    toast('Pipeline exported to CSV!', 'success');
+    log(`Exported ${emails.length} emails to CSV.`, 'info');
+  }
+
+  /* ─────────────────────────────────────────────────────
+     RESET DEMO
+  ───────────────────────────────────────────────────── */
+  function resetDemo() {
+    if (!confirm('Reset to initial 20 demo emails?')) return;
+    emails = clone(DEMO_EMAILS);
+    activityLog = [];
+    save();
+    renderAll();
+    toast('Demo dataset restored with 20 realistic emails!', 'success');
+    log('Demo dataset reset.', 'info');
+  }
+
+  /* ─────────────────────────────────────────────────────
+     TAB NAVIGATION
+  ───────────────────────────────────────────────────── */
+  function switchTab(tab) {
+    currentTab = tab;
+    ['board','scam','raw','log'].forEach(t => {
+      document.getElementById('view' + t.charAt(0).toUpperCase() + t.slice(1))
+              ?.classList.toggle('hidden', t !== tab);
+      const btn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+      if (btn) {
+        btn.className = btn.className.replace(/tab-active|tab-inactive/g, '').trim() + ' ' +
+          (t === tab ? 'tab-active' : 'tab-inactive');
+      }
+    });
+    lucide.createIcons();
+  }
+
+  /* ─────────────────────────────────────────────────────
+     API KEY SETTINGS
+  ───────────────────────────────────────────────────── */
+  function openApiModal() {
+    document.getElementById('apiKeyInput').value = localStorage.getItem('jha_key') || '';
+    document.getElementById('modelSelect').value = localStorage.getItem('jha_model') || 'gemini-2.5-flash';
+    openModal('apiModal');
+    lucide.createIcons();
+  }
+
+  function saveKey() {
+    const k = document.getElementById('apiKeyInput').value.trim();
+    const m = document.getElementById('modelSelect').value;
+    k ? localStorage.setItem('jha_key', k) : localStorage.removeItem('jha_key');
+    localStorage.setItem('jha_model', m);
+    updateApiLabel();
+    closeModal('apiModal');
+    toast(k ? 'Gemini API key saved! 🔑' : 'Removed key — running in heuristic mode.', 'success');
+    log(k ? 'API key updated.' : 'API key removed.', 'info');
+  }
+
+  function clearKey() {
+    localStorage.removeItem('jha_key');
+    document.getElementById('apiKeyInput').value = '';
+    updateApiLabel();
+    closeModal('apiModal');
+    toast('API key cleared. Heuristic mode active.', 'info');
+  }
+
+  async function testKey() {
+    const k = document.getElementById('apiKeyInput').value.trim();
+    const m = document.getElementById('modelSelect').value;
+    if (!k) { toast('Enter an API key first!', 'warning'); return; }
+    toast('Testing Gemini connection…', 'info');
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({contents:[{parts:[{text:'Say OK'}]}]})
+      });
+      toast(r.ok ? '✅ Gemini connection successful!' : `❌ API returned ${r.status}`, r.ok ? 'success' : 'warning');
+    } catch(err) {
+      toast('Connection error: ' + err.message, 'warning');
+    }
+  }
+
+  function updateApiLabel() {
+    const k = localStorage.getItem('jha_key');
+    const el = document.getElementById('apiLabel');
+    if (el) el.textContent = k ? '🔑 Gemini Active' : 'API Settings';
+  }
+
+  function toggleKeyVis() {
+    const inp = document.getElementById('apiKeyInput');
+    const eye = document.getElementById('keyEye');
+    if (inp.type === 'password') {
+      inp.type = 'text';
+      eye.setAttribute('data-lucide','eye-off');
+    } else {
+      inp.type = 'password';
+      eye.setAttribute('data-lucide','eye');
+    }
+    lucide.createIcons();
+  }
+
+  /* ─────────────────────────────────────────────────────
+     PROGRESS BAR
+  ───────────────────────────────────────────────────── */
+  function showProgress(show) {
+    document.getElementById('progressWrap').classList.toggle('hidden', !show);
+  }
+  function setProgress(pct, label) {
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('progressPct').textContent = pct + '%';
+    document.getElementById('progressLabel').textContent = label;
+  }
+
+  /* ─────────────────────────────────────────────────────
+     MODAL HELPERS
+  ───────────────────────────────────────────────────── */
+  function openModal(id) {
+    const el = document.getElementById(id);
+    if (el) { el.classList.remove('hidden'); el.classList.add('flex'); }
+  }
+  function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) { el.classList.add('hidden'); el.classList.remove('flex'); }
+  }
+  function closeAllModals() {
+    ['interviewModal','followUpModal','emailModal','addEmailModal','apiModal'].forEach(closeModal);
+  }
+
+  /* ─────────────────────────────────────────────────────
+     TOAST
+  ───────────────────────────────────────────────────── */
+  function toast(msg, type = 'info') {
+    const c = document.getElementById('toasts');
+    const t = document.createElement('div');
+    const styles = {
+      success: 'background:rgba(6,78,59,.95);border:1px solid rgba(16,185,129,.4);color:#6ee7b7',
+      warning: 'background:rgba(78,33,6,.95);border:1px solid rgba(245,158,11,.4);color:#fcd34d',
+      info:    'background:rgba(15,23,42,.97);border:1px solid rgba(255,255,255,.1);color:#cbd5e1',
+    };
+    const icons = { success:'check-circle', warning:'alert-triangle', info:'sparkles' };
+    t.setAttribute('style', `${styles[type]||styles.info};padding:.75rem 1rem;border-radius:.75rem;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,.4);display:flex;align-items:center;gap:.625rem;font-size:.75rem;max-width:22rem;pointer-events:auto;transition:all .3s;transform:translateY(8px);opacity:0`);
+    t.innerHTML = `<i data-lucide="${icons[type]||'info'}" style="width:1rem;height:1rem;flex-shrink:0"></i><span>${esc(msg)}</span>`;
+    c.appendChild(t);
+    lucide.createIcons();
+    requestAnimationFrame(() => { t.style.transform = 'translateY(0)'; t.style.opacity = '1'; });
+    setTimeout(() => {
+      t.style.transform = 'translateY(8px)'; t.style.opacity = '0';
+      setTimeout(() => t.remove(), 300);
+    }, 3800);
+  }
+
+  /* ─────────────────────────────────────────────────────
+     UTILS
+  ───────────────────────────────────────────────────── */
+  const SIM_NOW = new Date('2026-10-24T18:00:00+05:30');
+
+  function daysAgo(dateStr) {
+    if (!dateStr) return 0;
+    const d = new Date(dateStr + 'T00:00:00+05:30');
+    return Math.max(0, Math.floor((SIM_NOW - d) / 86400000));
+  }
+
+  function countdown(dateStr) {
+    if (!dateStr) return 'TBD';
+    // Try to parse partial strings like "2026-10-26 15:30 IST"
+    const clean = dateStr.replace(' IST', '+05:30').replace(' ',  'T');
+    const d = new Date(clean);
+    if (isNaN(d)) return 'TBD';
+    const diff = d - SIM_NOW;
+    if (diff < 0) return 'Past';
+    const h = Math.floor(diff / 3600000);
+    if (h < 24) return `${h}h`;
+    const days = Math.floor(diff / 86400000);
+    if (days === 0) return 'Today!';
+    if (days === 1) return 'Tomorrow!';
+    return `${days}d`;
+  }
+
+  function matches(e, q) {
+    if (!q) return true;
+    return [e.company, e.role, e.subject, e.sender, e.body]
+      .some(f => f && f.toLowerCase().includes(q));
+  }
+
+  function searchQ() {
+    return (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+  }
+
+  function setText(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  }
+
+  function esc(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                    .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+
+  function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  /* ─────────────────────────────────────────────────────
+     BOOT
+  ───────────────────────────────────────────────────── */
+  document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
